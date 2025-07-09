@@ -126,7 +126,7 @@ class ExportStatusHandler(webapp2.RequestHandler):
 class ExportDownloadHandler(blobstore_handlers.BlobstoreDownloadHandler):
     def get(self, filename):
 
-    	export = ExportTask.query(UserImage.filename == filename).get()
+        export = ExportTask.query(ExportTask.filename == filename).get()
     	
 
         if not export:
