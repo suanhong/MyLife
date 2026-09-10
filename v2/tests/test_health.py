@@ -1,8 +1,9 @@
 from mylife import create_app
+from mylife.repository import MemoryDiaryRepository
 
 
 def test_healthz():
-    app = create_app()
+    app = create_app(MemoryDiaryRepository())
     client = app.test_client()
     response = client.get("/healthz")
 
