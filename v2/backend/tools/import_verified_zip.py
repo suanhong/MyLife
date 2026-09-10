@@ -15,6 +15,7 @@ from google.cloud import datastore
 
 from app.backup_verification import verify_recovered_zip
 from app.importer import load_diaries_jsonl, load_images_json, summarize_import
+from app.legacy_mapping import unresolved_image_refs
 from tools.import_backup_to_datastore import diary_entity, image_entity, put_in_batches
 
 
@@ -37,7 +38,11 @@ def main():
         entries = load_diaries_jsonl(root / "diaries.jsonl")
         images = load_images_json(root / "images.json", root / "manifest.json")
         summary = summarize_import(entries, images)
+        unresolved = unresolved_image_refs(entries, images)
         print(summary)
+        print("Unresolved image references:", len(unresolved))
+        if unresolved:
+            raise SystemExit("Migration blocked: legacy image references are not fully resolved")
         if not args.allow_writes:
             print("Verified dry run only. Re-run with --allow-writes for staging import.")
             return
