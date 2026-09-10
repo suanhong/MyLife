@@ -10,6 +10,17 @@ from .repository import DiaryEntry, DiaryRepository
 def create_diary_blueprint(repo: DiaryRepository) -> Blueprint:
     bp = Blueprint("diary", __name__)
 
+    @bp.get("/api/diaries")
+    def list_diaries():
+        try:
+            limit = int(request.args.get("limit", "30"))
+        except ValueError:
+            abort(400)
+        if limit < 1 or limit > 365:
+            abort(400)
+        return jsonify(entries=[{"date": entry.diary_date.isoformat(), "text": entry.text,
+                                 "image_ids": list(entry.image_ids)} for entry in repo.recent(limit)])
+
     @bp.get("/api/diaries/<diary_date>")
     def get_diary(diary_date: str):
         try:
