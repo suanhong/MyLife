@@ -1,0 +1,3 @@
+# Staging acceptance checklist
+
+A staging cutover candidate is acceptable only when all checks pass: exact recovery ZIP SHA-256 and CRC; 2,822 diary entries, 252 images and 252 image references; zero unresolved legacy image references; representative old entries render correctly; image associations including the multi-image diary are correct; daily mail retries after a simulated provider failure and never duplicates a successful day; reply token routing and Message-ID deduplication work; image attachment validation/storage works; export/re-import round trip passes; single-user authentication and scheduler IAM are enforced; rollback to legacy remains available.
