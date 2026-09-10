@@ -3,6 +3,7 @@ import argparse
 
 from mylife.importer import inspect_backup
 from mylife.legacy_mapping import inspect_legacy_mapping
+from mylife.migration_counts import assert_expected_legacy_counts
 from mylife.migration_plan import build_plan
 
 
@@ -12,6 +13,7 @@ def main():
     args = parser.parse_args()
 
     summary = inspect_backup(args.backup)
+    assert_expected_legacy_counts(summary.posts, summary.images, summary.image_references)
     mapping = inspect_legacy_mapping(args.backup)
     print("Posts            :", summary.posts)
     print("Images           :", summary.images)
