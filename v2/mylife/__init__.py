@@ -2,6 +2,7 @@ from flask import Flask, jsonify, render_template
 
 from .factory import create_repository
 from .settings import Settings
+from .version import VERSION
 from .web import create_diary_blueprint
 
 
@@ -17,6 +18,6 @@ def create_app(repository=None) -> Flask:
 
     @app.get("/healthz")
     def healthz():
-        return jsonify(status="ok", service="mylife-v2")
+        return jsonify(status="ok", service="mylife-v2", version=VERSION)
 
     return app
