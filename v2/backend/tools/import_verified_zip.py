@@ -16,6 +16,7 @@ from google.cloud import datastore
 from app.backup_verification import verify_recovered_zip
 from app.importer import load_diaries_jsonl, load_images_json, summarize_import
 from app.legacy_mapping import unresolved_image_refs
+from app.migration_guard import validate_staging_namespace
 from tools.import_backup_to_datastore import diary_entity, image_entity, put_in_batches
 
 
@@ -28,6 +29,7 @@ def main():
     parser.add_argument("--allow-writes", action="store_true")
     args = parser.parse_args()
 
+    validate_staging_namespace(args.namespace)
     verify_recovered_zip(args.backup)
     with tempfile.TemporaryDirectory() as temp:
         with zipfile.ZipFile(args.backup) as archive:
