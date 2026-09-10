@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MyLife</title></head>
+<body>
+  <main>
+    <h1>MyLife</h1>
+    <p>Private diary</p>
+    <form id="diary-form">
+      <label>Date <input id="diary-date" type="date" required></label><br>
+      <label>Entry<br><textarea id="diary-text" rows="18" cols="80"></textarea></label><br>
+      <button type="submit">Save</button>
+      <button type="button" id="load">Load</button>
+      <button type="button" id="delete">Delete</button>
+    </form>
+    <p id="status"></p>
+  </main>
+<script>
+const dateInput=document.getElementById('diary-date');
+const text=document.getElementById('diary-text');
+const status=document.getElementById('status');
+dateInput.value=new Date().toISOString().slice(0,10);
+async function load(){const r=await fetch('/api/diaries/'+dateInput.value);if(r.ok){text.value=(await r.json()).text;status.textContent='Loaded';}else status.textContent='Not found';}
+document.getElementById('load').onclick=load;
+document.getElementById('diary-form').onsubmit=async e=>{e.preventDefault();const r=await fetch('/api/diaries/'+dateInput.value,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:text.value})});status.textContent=r.ok?'Saved':'Save failed';};
+document.getElementById('delete').onclick=async()=>{const r=await fetch('/api/diaries/'+dateInput.value,{method:'DELETE'});if(r.ok){text.value='';status.textContent='Deleted';}else status.textContent='Delete failed';};
+</script>
+</body>
+</html>
