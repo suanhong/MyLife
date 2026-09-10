@@ -18,15 +18,13 @@ class DatastoreDiaryRepository:
     def _key(self, diary_date: date):
         return self.client.key(self.KIND, diary_date.isoformat())
 
+    def _entry(self, entity) -> DiaryEntry:
+        return DiaryEntry(date.fromisoformat(entity["date"]), entity.get("text", ""),
+                          tuple(entity.get("image_ids", [])))
+
     def get(self, diary_date: date) -> DiaryEntry | None:
         entity = self.client.get(self._key(diary_date))
-        if entity is None:
-            return None
-        return DiaryEntry(
-            diary_date=diary_date,
-            text=entity.get("text", ""),
-            image_ids=tuple(entity.get("image_ids", [])),
-        )
+        return self._entry(entity) if entity is not None else None
 
     def save(self, entry: DiaryEntry) -> None:
         entity = datastore.Entity(key=self._key(entry.diary_date), exclude_from_indexes=("text",))
@@ -40,3 +38,8 @@ class DatastoreDiaryRepository:
             return False
         self.client.delete(key)
         return True
+
+    def recent(self, limit: int = 30) -> list[DiaryEntry]:
+        query = self.client.query(kind=self.KIND)
+        query.order = ["-date"]
+        return [self._entry(entity) for entity in query.fetch(limit=limit)]
