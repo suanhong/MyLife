@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from fastapi import FastAPI, HTTPException, Query
 
+from .datastore_repository import DatastoreDiaryRepository
 from .models import DiaryEntry, DiaryEntryList, HealthCheck
+from .settings import get_settings
 from .storage import DiaryRepository, InMemoryDiaryRepository
 
 app = FastAPI(
@@ -11,7 +13,18 @@ app = FastAPI(
     description="Modern replacement for the legacy MyLife diary service.",
 )
 
-repository: DiaryRepository = InMemoryDiaryRepository()
+
+def build_repository() -> DiaryRepository:
+    settings = get_settings()
+    if settings.environment == "production" or settings.project_id:
+        return DatastoreDiaryRepository(
+            project_id=settings.project_id,
+            namespace=settings.datastore_namespace,
+        )
+    return InMemoryDiaryRepository()
+
+
+repository: DiaryRepository = build_repository()
 
 
 @app.get("/healthz", response_model=HealthCheck)
