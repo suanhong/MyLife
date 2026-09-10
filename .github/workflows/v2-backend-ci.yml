@@ -1,0 +1,29 @@
+name: v2-backend-ci
+
+on:
+  pull_request:
+    paths:
+      - 'v2/backend/**'
+      - '.github/workflows/v2-backend-ci.yml'
+  push:
+    branches:
+      - mylife-v2
+    paths:
+      - 'v2/backend/**'
+      - '.github/workflows/v2-backend-ci.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: v2/backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run tests
+        run: pytest -q
