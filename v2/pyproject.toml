@@ -1,0 +1,20 @@
+[project]
+name = "mylife-v2"
+version = "0.1.0"
+description = "Single-user private diary service"
+requires-python = ">=3.12"
+dependencies = [
+  "Flask>=3.1,<4",
+  "gunicorn>=23,<24",
+  "google-cloud-datastore>=2.20,<3",
+  "google-cloud-storage>=2.18,<4",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8,<9",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
