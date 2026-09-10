@@ -5,6 +5,8 @@ import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 
+from .legacy_refs import reference_aliases
+
 
 @dataclass(frozen=True)
 class MappingReport:
@@ -16,12 +18,15 @@ class MappingReport:
 
 
 def _aliases(image: dict) -> set[str]:
-    values = {str(image.get("key", ""))}
+    values = set()
+    key = image.get("key")
+    if key:
+        values.update(reference_aliases(str(key)))
     for name in ("filename", "original_size_key", "serving_size_key"):
         value = image.get(name)
         if value:
             values.add(str(value))
-    return {value for value in values if value}
+    return values
 
 
 def inspect_legacy_mapping(path: str | Path) -> MappingReport:
@@ -44,7 +49,14 @@ def inspect_legacy_mapping(path: str | Path) -> MappingReport:
             post = json.loads(line)
             for ref in post.get("images") or []:
                 references += 1
-                matches = alias_map.get(str(ref), [])
+                matches = []
+                seen = set()
+                for alias in reference_aliases(str(ref)):
+                    for image in alias_map.get(alias, []):
+                        marker = str(image.get("key", id(image)))
+                        if marker not in seen:
+                            seen.add(marker)
+                            matches.append(image)
                 if len(matches) == 1:
                     resolved += 1
                 else:
