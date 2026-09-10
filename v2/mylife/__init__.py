@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, render_template
 
 from .factory import create_repository
 from .settings import Settings
@@ -10,6 +10,10 @@ def create_app(repository=None) -> Flask:
     settings = Settings.from_env()
     repo = repository or create_repository(settings.project_id)
     app.register_blueprint(create_diary_blueprint(repo))
+
+    @app.get("/")
+    def index():
+        return render_template("index.html")
 
     @app.get("/healthz")
     def healthz():
