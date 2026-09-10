@@ -4,8 +4,10 @@ from mylife.repository import MemoryDiaryRepository
 
 def test_healthz():
     app = create_app(MemoryDiaryRepository())
-    client = app.test_client()
-    response = client.get("/healthz")
+    response = app.test_client().get("/healthz")
+    payload = response.get_json()
 
     assert response.status_code == 200
-    assert response.get_json() == {"service": "mylife-v2", "status": "ok"}
+    assert payload["service"] == "mylife-v2"
+    assert payload["status"] == "ok"
+    assert payload["version"] == "0.1.0-foundation"
