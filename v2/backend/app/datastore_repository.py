@@ -41,36 +41,52 @@ class DatastoreDiaryRepository(DiaryRepository):
         return entity_to_diary_entry(entity)
 
     def stats(self) -> RepositoryStats:
-        entries = 0
+        entries = count_kind(self.client, self.DIARY_KIND)
+        images = count_kind(self.client, self.IMAGE_KIND)
+
+        # A projection query over a repeated property returns one projected row
+        # per repeated value. Therefore each row contributes one image reference,
+        # while entries-with-images must be de-duplicated by entity key.
         image_references = 0
         unique_refs: set[str] = set()
-        entries_with_images = 0
-
-        diary_query = self.client.query(kind=self.DIARY_KIND)
-        diary_query.keys_only()
-        for entity in diary_query.fetch(timeout=120):
-            entries += 1
+        entry_keys_with_images: set[str] = set()
 
         ref_query = self.client.query(kind=self.DIARY_KIND)
         ref_query.projection = ["image_refs"]
         for entity in ref_query.fetch(timeout=120):
-            refs = list(entity.get("image_refs") or [])
-            if refs:
-                entries_with_images += 1
+            refs = normalize_refs(entity.get("image_refs"))
+            if not refs:
+                continue
+            entry_keys_with_images.add(entity_key_id(entity))
             image_references += len(refs)
-            unique_refs.update(str(ref) for ref in refs)
-
-        image_query = self.client.query(kind=self.IMAGE_KIND)
-        image_query.keys_only()
-        images = sum(1 for _ in image_query.fetch(timeout=120))
+            unique_refs.update(refs)
 
         return RepositoryStats(
             entries=entries,
             images=images,
             image_references=image_references,
             unique_image_references=len(unique_refs),
-            entries_with_images=entries_with_images,
+            entries_with_images=len(entry_keys_with_images),
         )
+
+
+def count_kind(client: datastore.Client, kind: str) -> int:
+    query = client.query(kind=kind)
+    query.keys_only()
+    return sum(1 for _ in query.fetch(timeout=120))
+
+
+def normalize_refs(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return [str(item) for item in value if item is not None]
+    return [str(value)]
+
+
+def entity_key_id(entity: datastore.Entity) -> str:
+    key = entity.key
+    return key.name or str(key.id) or str(key)
 
 
 def entity_to_diary_entry(entity: datastore.Entity) -> DiaryEntry:
@@ -81,7 +97,7 @@ def entity_to_diary_entry(entity: datastore.Entity) -> DiaryEntry:
         source=entity.get("source"),
         created_at=parse_datetime(entity.get("created_at")),
         updated_at=parse_datetime(entity.get("updated_at")),
-        image_refs=list(entity.get("image_refs") or []),
+        image_refs=normalize_refs(entity.get("image_refs")),
         legacy_key=entity.get("legacy_key"),
         metadata=dict(entity.get("metadata") or {}),
     )
