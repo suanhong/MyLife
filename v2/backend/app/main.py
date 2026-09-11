@@ -27,8 +27,9 @@ def build_repository() -> DiaryRepository:
 repository: DiaryRepository = build_repository()
 
 
-@app.get("/healthz", response_model=HealthCheck)
-def healthz() -> HealthCheck:
+@app.get("/health", response_model=HealthCheck)
+@app.get("/healthz", response_model=HealthCheck, include_in_schema=False)
+def health() -> HealthCheck:
     return HealthCheck()
 
 
