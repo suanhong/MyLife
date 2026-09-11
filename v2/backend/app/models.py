@@ -36,6 +36,14 @@ class DiaryEntryList(BaseModel):
     offset: int
 
 
+class RepositoryStats(BaseModel):
+    entries: int
+    images: int
+    image_references: int
+    unique_image_references: int
+    entries_with_images: int
+
+
 class HealthCheck(BaseModel):
     status: str = "ok"
     service: str = "mylife-v2"
