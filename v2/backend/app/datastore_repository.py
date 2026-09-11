@@ -25,7 +25,10 @@ class DatastoreDiaryRepository(DiaryRepository):
 
     def list_entries(self, *, limit: int, offset: int) -> tuple[list[DiaryEntry], int]:
         query = self.client.query(kind=self.DIARY_KIND)
-        query.order = ["-entry_date", "id"]
+        # Keep this as a single-property order so the first read works without
+        # requiring a composite Datastore index. Dates are ISO-8601 strings, so
+        # descending lexical order is also descending chronological order.
+        query.order = ["-entry_date"]
         entities = list(query.fetch(limit=limit, offset=offset, timeout=60))
         entries = [entity_to_diary_entry(entity) for entity in entities]
 
