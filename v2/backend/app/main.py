@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import FastAPI, HTTPException, Query
 
 from .datastore_repository import DatastoreDiaryRepository
-from .models import DiaryEntry, DiaryEntryList, HealthCheck
+from .models import DiaryEntry, DiaryEntryList, HealthCheck, RepositoryStats
 from .settings import get_settings
 from .storage import DiaryRepository, InMemoryDiaryRepository
 
@@ -30,6 +30,11 @@ repository: DiaryRepository = build_repository()
 @app.get("/healthz", response_model=HealthCheck)
 def healthz() -> HealthCheck:
     return HealthCheck()
+
+
+@app.get("/api/stats", response_model=RepositoryStats)
+def stats() -> RepositoryStats:
+    return repository.stats()
 
 
 @app.get("/api/entries", response_model=DiaryEntryList)
