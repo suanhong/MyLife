@@ -32,9 +32,9 @@ class DatastoreDiaryRepository(DiaryRepository):
         entities = list(query.fetch(limit=limit, offset=offset, timeout=60))
         entries = [entity_to_diary_entry(entity) for entity in entities]
 
-        # Datastore does not provide a cheap exact count in this client path.
-        # Return the page count for now; replace with an aggregate/stat entity later.
-        return entries, len(entries)
+        # An aggregation count returns the full corpus size without transferring
+        # every entity or key to the Cloud Run instance.
+        return entries, count_kind(self.client, self.DIARY_KIND)
 
     def get_entry(self, entry_id: str) -> DiaryEntry | None:
         key = self.client.key(self.DIARY_KIND, entry_id)
@@ -75,8 +75,12 @@ class DatastoreDiaryRepository(DiaryRepository):
 
 def count_kind(client: datastore.Client, kind: str) -> int:
     query = client.query(kind=kind)
-    query.keys_only()
-    return sum(1 for _ in query.fetch(timeout=120))
+    aggregation = client.aggregation_query(query)
+    aggregation.count(alias="total")
+    rows = list(aggregation.fetch(timeout=120))
+    if not rows or not rows[0]:
+        return 0
+    return int(rows[0][0].value)
 
 
 def normalize_refs(value: Any) -> list[str]:
