@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MyLife</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">PRIVATE DIARY</p>
+      <h1>MyLife</h1>
+    </div>
+    <p id="summary" class="summary">일기를 불러오는 중입니다…</p>
+  </header>
+
+  <main>
+    <form id="filters" class="filters" role="search">
+      <label class="search-field">
+        <span>본문 검색</span>
+        <input id="query" name="q" type="search" maxlength="100" placeholder="기억하고 싶은 단어를 입력하세요">
+      </label>
+      <label>
+        <span>시작일</span>
+        <input id="date-from" name="date_from" type="date">
+      </label>
+      <label>
+        <span>종료일</span>
+        <input id="date-to" name="date_to" type="date">
+      </label>
+      <button type="submit">찾기</button>
+      <button id="reset" class="secondary" type="button">초기화</button>
+    </form>
+
+    <section aria-live="polite">
+      <div id="status" class="status"></div>
+      <div id="entries" class="entries"></div>
+    </section>
+
+    <nav class="pager" aria-label="일기 페이지 이동">
+      <button id="previous" class="secondary" type="button">이전</button>
+      <span id="page-label"></span>
+      <button id="next" class="secondary" type="button">다음</button>
+    </nav>
+  </main>
+
+  <template id="entry-template">
+    <article class="entry">
+      <header>
+        <time></time>
+        <span class="source"></span>
+      </header>
+      <p class="entry-text"></p>
+      <div class="images"></div>
+    </article>
+  </template>
+  <script src="/static/app.js" defer></script>
+</body>
+</html>

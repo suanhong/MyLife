@@ -36,7 +36,6 @@ class FakeClient:
 
 def test_count_kind_uses_aggregation_query() -> None:
     client = FakeClient(2822)
-
     assert count_kind(client, "DiaryEntryV2") == 2822
     assert client.kind == "DiaryEntryV2"
     assert client.aggregation.alias == "total"

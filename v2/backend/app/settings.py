@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     project_id: str | None = Field(default=None)
     datastore_namespace: str | None = Field(default=None)
     storage_bucket: str | None = Field(default=None)
+    image_prefix: str = Field(default="mylife-v2/photos")
 
 
 def get_settings() -> Settings:

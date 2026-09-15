@@ -4,52 +4,61 @@ from datetime import date, datetime
 from typing import Any
 
 from google.cloud import datastore
+from google.cloud.datastore.query import PropertyFilter
 
-from .models import DiaryEntry, RepositoryStats
+from .models import DiaryEntry, ImageRef, RepositoryStats
 from .storage import DiaryRepository
 
 
 class DatastoreDiaryRepository(DiaryRepository):
-    """Repository backed by Google Cloud Datastore/Firestore-in-Datastore mode.
-
-    The importer writes v2 entities with kinds `DiaryEntryV2` and `ImageRefV2`.
-    This class is intentionally small so the FastAPI layer does not depend on
-    Datastore types.
-    """
-
     DIARY_KIND = "DiaryEntryV2"
     IMAGE_KIND = "ImageRefV2"
 
     def __init__(self, *, project_id: str | None = None, namespace: str | None = None) -> None:
         self.client = datastore.Client(project=project_id, namespace=namespace)
 
-    def list_entries(self, *, limit: int, offset: int) -> tuple[list[DiaryEntry], int]:
+    def list_entries(
+        self,
+        *,
+        limit: int,
+        offset: int,
+        query_text: str | None = None,
+        date_from: date | None = None,
+        date_to: date | None = None,
+    ) -> tuple[list[DiaryEntry], int]:
         query = self.client.query(kind=self.DIARY_KIND)
-        # Keep this as a single-property order so the first read works without
-        # requiring a composite Datastore index. Dates are ISO-8601 strings, so
-        # descending lexical order is also descending chronological order.
+        if date_from:
+            query.add_filter(filter=PropertyFilter("entry_date", ">=", date_from.isoformat()))
+        if date_to:
+            query.add_filter(filter=PropertyFilter("entry_date", "<=", date_to.isoformat()))
         query.order = ["-entry_date"]
+
+        if query_text:
+            # Datastore has no native full-text index. The personal corpus is
+            # deliberately scanned only when the user submits a text search.
+            needle = query_text.casefold()
+            matches = [
+                entity_to_diary_entry(entity)
+                for entity in query.fetch(timeout=120)
+                if needle in str(entity.get("text") or "").casefold()
+            ]
+            return matches[offset : offset + limit], len(matches)
+
         entities = list(query.fetch(limit=limit, offset=offset, timeout=60))
         entries = [entity_to_diary_entry(entity) for entity in entities]
-
-        # An aggregation count returns the full corpus size without transferring
-        # every entity or key to the Cloud Run instance.
-        return entries, count_kind(self.client, self.DIARY_KIND)
+        return entries, count_query(self.client, query)
 
     def get_entry(self, entry_id: str) -> DiaryEntry | None:
-        key = self.client.key(self.DIARY_KIND, entry_id)
-        entity = self.client.get(key)
-        if entity is None:
-            return None
-        return entity_to_diary_entry(entity)
+        entity = self.client.get(self.client.key(self.DIARY_KIND, entry_id))
+        return entity_to_diary_entry(entity) if entity is not None else None
+
+    def get_image(self, image_ref: str) -> ImageRef | None:
+        entity = self.client.get(self.client.key(self.IMAGE_KIND, image_ref))
+        return entity_to_image_ref(entity) if entity is not None else None
 
     def stats(self) -> RepositoryStats:
         entries = count_kind(self.client, self.DIARY_KIND)
         images = count_kind(self.client, self.IMAGE_KIND)
-
-        # A projection query over a repeated property returns one projected row
-        # per repeated value. Therefore each row contributes one image reference,
-        # while entries-with-images must be de-duplicated by entity key.
         image_references = 0
         unique_refs: set[str] = set()
         entry_keys_with_images: set[str] = set()
@@ -58,11 +67,10 @@ class DatastoreDiaryRepository(DiaryRepository):
         ref_query.projection = ["image_refs"]
         for entity in ref_query.fetch(timeout=120):
             refs = normalize_refs(entity.get("image_refs"))
-            if not refs:
-                continue
-            entry_keys_with_images.add(entity_key_id(entity))
-            image_references += len(refs)
-            unique_refs.update(refs)
+            if refs:
+                entry_keys_with_images.add(entity_key_id(entity))
+                image_references += len(refs)
+                unique_refs.update(refs)
 
         return RepositoryStats(
             entries=entries,
@@ -73,14 +81,17 @@ class DatastoreDiaryRepository(DiaryRepository):
         )
 
 
-def count_kind(client: datastore.Client, kind: str) -> int:
-    query = client.query(kind=kind)
+def count_query(client: datastore.Client, query: Any) -> int:
     aggregation = client.aggregation_query(query)
     aggregation.count(alias="total")
     rows = list(aggregation.fetch(timeout=120))
     if not rows or not rows[0]:
         return 0
     return int(rows[0][0].value)
+
+
+def count_kind(client: datastore.Client, kind: str) -> int:
+    return count_query(client, client.query(kind=kind))
 
 
 def normalize_refs(value: Any) -> list[str]:
@@ -107,6 +118,19 @@ def entity_to_diary_entry(entity: datastore.Entity) -> DiaryEntry:
         image_refs=normalize_refs(entity.get("image_refs")),
         legacy_key=entity.get("legacy_key"),
         metadata=dict(entity.get("metadata") or {}),
+    )
+
+
+def entity_to_image_ref(entity: datastore.Entity) -> ImageRef:
+    return ImageRef(
+        legacy_key=entity.get("legacy_key"),
+        filename=str(entity.get("filename") or ""),
+        original_filename=entity.get("original_filename"),
+        content_type=entity.get("content_type"),
+        size_bytes=entity.get("size_bytes"),
+        sha256=entity.get("sha256"),
+        storage_key=entity.get("storage_key"),
+        created_at=parse_datetime(entity.get("created_at")),
     )
 
 
